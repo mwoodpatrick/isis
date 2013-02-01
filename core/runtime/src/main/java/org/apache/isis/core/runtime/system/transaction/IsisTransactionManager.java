@@ -28,16 +28,19 @@ import static org.hamcrest.CoreMatchers.nullValue;
 
 import java.util.List;
 
-import org.apache.log4j.Logger;
-
+import org.apache.isis.applib.annotation.PublishedAction;
+import org.apache.isis.applib.annotation.PublishedObject;
+import org.apache.isis.applib.annotation.PublishedObject.EventCanonicalizer;
+import org.apache.isis.applib.services.audit.AuditingService;
+import org.apache.isis.applib.services.publish.PublishingService;
 import org.apache.isis.core.commons.components.SessionScopedComponent;
 import org.apache.isis.core.commons.debug.DebugBuilder;
 import org.apache.isis.core.commons.exceptions.IsisException;
-import org.apache.isis.core.runtime.persistence.ObjectPersistenceException;
 import org.apache.isis.core.runtime.persistence.objectstore.transaction.PersistenceCommand;
 import org.apache.isis.core.runtime.persistence.objectstore.transaction.TransactionalResource;
 import org.apache.isis.core.runtime.system.context.IsisContext;
 import org.apache.isis.core.runtime.system.session.IsisSession;
+import org.apache.log4j.Logger;
 
 public class IsisTransactionManager implements SessionScopedComponent {
 
@@ -49,6 +52,15 @@ public class IsisTransactionManager implements SessionScopedComponent {
 
     private int transactionLevel;
     
+    /**
+     * Could be null.
+     */
+    private final AuditingService auditingService;
+    /**
+     * Could be null.
+     */
+    private final PublishingServiceWithCanonicalizers publishingService;
+
     private IsisSession session;
 
     /**
@@ -61,9 +73,11 @@ public class IsisTransactionManager implements SessionScopedComponent {
     // constructor
     // ////////////////////////////////////////////////////////////////
 
-    public IsisTransactionManager(final EnlistedObjectDirtying objectPersistor, final TransactionalResource objectStore) {
+    public IsisTransactionManager(final EnlistedObjectDirtying objectPersistor, final TransactionalResource objectStore, final AuditingService auditingService, final PublishingServiceWithCanonicalizers publishingService) {
         this.objectPersistor = objectPersistor;
         this.transactionalResource = objectStore;
+        this.auditingService = auditingService;
+        this.publishingService = publishingService;
     }
     
     
@@ -234,7 +248,7 @@ public class IsisTransactionManager implements SessionScopedComponent {
         ensureThatArg(messageBroker, is(not(nullValue())));
         ensureThatArg(updateNotifier, is(not(nullValue())));
 
-        return new IsisTransaction(this, messageBroker, updateNotifier, getTransactionalResource());
+        return new IsisTransaction(this, messageBroker, updateNotifier, getTransactionalResource(), auditingService, publishingService);
     }
     
 
