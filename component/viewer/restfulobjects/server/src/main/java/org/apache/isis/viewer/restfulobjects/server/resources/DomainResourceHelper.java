@@ -44,19 +44,16 @@ import org.apache.isis.core.metamodel.spec.feature.ObjectMember;
 import org.apache.isis.core.metamodel.spec.feature.OneToManyAssociation;
 import org.apache.isis.core.metamodel.spec.feature.OneToOneAssociation;
 import org.apache.isis.viewer.restfulobjects.applib.JsonRepresentation;
-import org.apache.isis.viewer.restfulobjects.applib.RepresentationType;
 import org.apache.isis.viewer.restfulobjects.applib.client.RestfulResponse.HttpStatusCode;
 import org.apache.isis.viewer.restfulobjects.applib.util.JsonMapper;
 import org.apache.isis.viewer.restfulobjects.applib.util.UrlEncodingUtils;
 import org.apache.isis.viewer.restfulobjects.rendering.RendererContext;
-import org.apache.isis.viewer.restfulobjects.rendering.RendererFactory;
-import org.apache.isis.viewer.restfulobjects.rendering.RendererFactoryRegistry;
-import org.apache.isis.viewer.restfulobjects.rendering.ReprRendererException;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.AbstractObjectMemberReprRenderer;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ActionResultReprRenderer;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.DomainObjectLinkTo;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.DomainObjectReprRenderer;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.JsonValueEncoder;
+import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.JsonValueEncoder.ExpectedStringRepresentingValueException;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.MemberType;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectActionReprRenderer;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectAdapterLinkTo;
@@ -66,7 +63,6 @@ import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectAndCo
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectAndProperty;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectCollectionReprRenderer;
 import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.ObjectPropertyReprRenderer;
-import org.apache.isis.viewer.restfulobjects.rendering.domainobjects.JsonValueEncoder.ExpectedStringRepresentingValueException;
 import org.apache.isis.viewer.restfulobjects.server.ResourceContext;
 import org.apache.isis.viewer.restfulobjects.server.RestfulObjectsApplicationException;
 import org.apache.isis.viewer.restfulobjects.server.resources.ResourceAbstract.Caching;
@@ -151,9 +147,7 @@ public final class DomainResourceHelper {
     // //////////////////////////////////////////////////////////////
 
     public Response objectRepresentation() {
-        final RendererFactory rendererFactory = getRendererFactoryRegistry().find(RepresentationType.DOMAIN_OBJECT);
-
-        final DomainObjectReprRenderer renderer = (DomainObjectReprRenderer) rendererFactory.newRenderer(resourceContext, null, JsonRepresentation.newMap());
+        final DomainObjectReprRenderer renderer = new DomainObjectReprRenderer(resourceContext, null, JsonRepresentation.newMap());
         renderer.with(objectAdapter).includesSelf();
 
         final ResponseBuilder respBuilder = ResourceAbstract.responseOfOk(renderer, Caching.NONE);
@@ -190,8 +184,7 @@ public final class DomainResourceHelper {
 
         final OneToOneAssociation property = getPropertyThatIsVisibleAndUsable(propertyId, Intent.ACCESS, where);
 
-        final RendererFactory factory = getRendererFactoryRegistry().find(RepresentationType.OBJECT_PROPERTY);
-        final ObjectPropertyReprRenderer renderer = (ObjectPropertyReprRenderer) factory.newRenderer(resourceContext, null, JsonRepresentation.newMap());
+        final ObjectPropertyReprRenderer renderer = new ObjectPropertyReprRenderer(resourceContext, null, JsonRepresentation.newMap());
 
         renderer.with(new ObjectAndProperty(objectAdapter, property)).usingLinkTo(adapterLinkTo);
 
@@ -208,8 +201,7 @@ public final class DomainResourceHelper {
 
         final OneToManyAssociation collection = getCollectionThatIsVisibleAndUsable(collectionId, Intent.ACCESS, where);
 
-        final RendererFactory factory = RendererFactoryRegistry.instance.find(RepresentationType.OBJECT_COLLECTION);
-        final ObjectCollectionReprRenderer renderer = (ObjectCollectionReprRenderer) factory.newRenderer(resourceContext, null, JsonRepresentation.newMap());
+        final ObjectCollectionReprRenderer renderer = new ObjectCollectionReprRenderer(resourceContext, null, JsonRepresentation.newMap());
 
         renderer.with(new ObjectAndCollection(objectAdapter, collection)).usingLinkTo(adapterLinkTo);
 
@@ -225,8 +217,7 @@ public final class DomainResourceHelper {
     Response actionPrompt(final String actionId, Where where) {
         final ObjectAction action = getObjectActionThatIsVisibleAndUsable(actionId, Intent.ACCESS, where);
 
-        final RendererFactory factory = getRendererFactoryRegistry().find(RepresentationType.OBJECT_ACTION);
-        final ObjectActionReprRenderer renderer = (ObjectActionReprRenderer) factory.newRenderer(resourceContext, null, JsonRepresentation.newMap());
+        final ObjectActionReprRenderer renderer = new ObjectActionReprRenderer(resourceContext, null, JsonRepresentation.newMap());
 
         renderer.with(new ObjectAndAction(objectAdapter, action)).usingLinkTo(adapterLinkTo).asStandalone();
 
@@ -313,8 +304,7 @@ public final class DomainResourceHelper {
         final ObjectAdapter returnedAdapter = action.execute(objectAdapter, argArray);
 
         // response (void)
-        final RendererFactory factory = getRendererFactoryRegistry().find(RepresentationType.ACTION_RESULT);
-        final ActionResultReprRenderer renderer = (ActionResultReprRenderer) factory.newRenderer(resourceContext, null, JsonRepresentation.newMap());
+        final ActionResultReprRenderer renderer = new ActionResultReprRenderer(resourceContext, null, JsonRepresentation.newMap());
 
         renderer.with(new ObjectAndActionInvocation(objectAdapter, action, arguments, returnedAdapter)).using(adapterLinkTo);
 
@@ -591,15 +581,6 @@ public final class DomainResourceHelper {
         // TODO: should return a string in the form
         // http://localhost:8080/types/xxx
         return objectSpec.getFullIdentifier();
-    }
-
-    // //////////////////////////////////////////////////////////////
-    // dependencies
-    // //////////////////////////////////////////////////////////////
-
-    protected RendererFactoryRegistry getRendererFactoryRegistry() {
-        // TODO: yuck
-        return RendererFactoryRegistry.instance;
     }
 
 }
